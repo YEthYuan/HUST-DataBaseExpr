@@ -2,6 +2,8 @@
 # -*- coding: UTF-8 -*-
 
 import pymysql
+import tabulate
+import pandas as pd
 
 
 def print_menu():
@@ -20,22 +22,22 @@ def print_menu():
 
 
 def insert_student(db):
+    cursor = db.cursor()
+    dic_student = {'sno': [], 'sname': [], 'sex': [], 'age': [], 'dept': [], 'scholarship': []}
     print("================== Mode 1: Insert New Student Info ==================")
     print("Please input the following information! ")
 
-    sno = input("Student ID: ")
-    sname = input("Name: ")
-    sex = input("Gender: ")
-    age = input("Age: ")
-    dept = input("Student's Department: ")
-    scholarship = "是" if input("Have Scholarship? (y/n)") == 'y' else "否"
+    dic_student['sno'].append(input("Student ID: "))
+    dic_student['sname'].append(input("Name: "))
+    dic_student['sex'].append(input("Gender: "))
+    dic_student['age'].append(input("Age: "))
+    dic_student['dept'].append(input("Student's Department: "))
+    dic_student['scholarship'].append("是" if input("Have Scholarship? (y/n)") == 'y' else "否")
 
+    df = pd.DataFrame(dic_student)
+    pdtabulate = lambda df: tabulate(df, headers='keys', tablefmt='psql')
     print("Re-check the student's information below: ")
-    print(f'''
-    Student ID: {sno}, \tName: {sname},
-    Gender: {sex}, \tAge: {age},
-    Department: {dept}, \tHave Scholarship: {scholarship}.
-    ''')
+    print(tabulate(df, headers='keys', tablefmt='psql'))
 
     op = input("ARE YOU SURE TO INSERT THE NEW INFORMATION? (y/n)")
     if op == 'n':
@@ -44,18 +46,78 @@ def insert_student(db):
     else:
         pass
 
-    cursor = db.cursor()
-
-    sql = f"INSERT INTO Student" \
-          f"VALUES({sno},{sname},{sex},{age},{dept},{scholarship})"
+    sql = "INSERT INTO Student " \
+          "VALUES('%s', '%s', '%s', %s, '%s', '%s')" % (
+              dic_student['sno'], dic_student['sname'], dic_student['sex'], dic_student['age'], dic_student['dept'],
+              dic_student['scholarship'])
 
     try:
         cursor.execute(sql)
         db.commit()
+        print("Successfully Inserted! ")
     except:
         print("An unexpected error occurred and we rollback all the changes. ")
         db.rollback()
 
+    return
+
+
+def update_student(db):
+    cursor = db.cursor()
+    print("================== Mode 2: Modify Existing Student Info ==================")
+    print("Please input the Student ID to search the student! ")
+
+    sno = input("Student ID: ")
+
+    sql = "SELECT * FROM Student WHERE Sno = '%s'" % sno
+
+    try:
+        cursor.execute(sql)
+        results = cursor.fetchall()
+        print("Student founded! Here is the information of this person: ")
+        print("Sno\tSname\tSsex\tSage\tSdept\tScholarship")
+        for row in results:
+            Sno = row[0]
+            Sname = row[1]
+            Ssex = row[2]
+            Sage = row[3]
+            Sdept = row[4]
+            Scholarship = row[5]
+    except:
+        pass
+
+    sname = input("Name: ")
+    sex = input("Gender: ")
+    age = input("Age: ")
+    dept = input("Student's Department: ")
+    scholarship = "是" if input("Have Scholarship? (y/n)") == 'y' else "否"
+
+    print("Re-check the student's information below: ")
+    print(f'''
+        Student ID: {sno}, \tName: {sname},
+        Gender: {sex}, \tAge: {age},
+        Department: {dept}, \tHave Scholarship: {scholarship}.
+        ''')
+
+    op = input("ARE YOU SURE TO INSERT THE NEW INFORMATION? (y/n)")
+    if op == 'n':
+        print("rollback successfully! ")
+        return
+    else:
+        pass
+
+    sql = "INSERT INTO Student " \
+          "VALUES('%s', '%s', '%s', %s, '%s', '%s')" % (sno, sname, sex, age, dept, scholarship)
+
+    try:
+        cursor.execute(sql)
+        db.commit()
+        print("Successfully Inserted! ")
+    except:
+        print("An unexpected error occurred and we rollback all the changes. ")
+        db.rollback()
+
+    return
 
 
 def main():
@@ -91,7 +153,8 @@ def main():
             break
         elif op == '1':
             insert_student(db)
-
+        elif op == '2':
+            update_student(db)
 
     db.close()
     print("Thanks for using this database! Bye!")

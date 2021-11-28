@@ -263,6 +263,96 @@ def delete_course(db):
     return
 
 
+def record_grade(db):
+    cursor = db.cursor()
+    dic_sc = {'sno': [], 'cno': [], 'grade': []}
+    print("================== Mode 6: Record Student's Grade ==================")
+    print("Please input the following information! ")
+
+    dic_sc['sno'].append(input("Student ID: "))
+    dic_sc['cno'].append(input("Course ID: "))
+    dic_sc['grade'].append(input("Student's Grade: "))
+
+    df = pd.DataFrame(dic_sc)
+
+    print("Re-check the information below: ")
+    print(tabulate(df, headers='keys', tablefmt='psql'))
+
+    op = input("ARE YOU SURE TO INSERT THE NEW INFORMATION? (y/n)")
+    if op == 'n':
+        print("rollback successfully! ")
+        return
+    else:
+        pass
+
+    sql = "INSERT INTO SC " \
+          "VALUES('%s', '%s', %s)" % (
+              dic_sc['sno'][0], dic_sc['cno'][0], dic_sc['grade'][0])
+
+    try:
+        cursor.execute(sql)
+        db.commit()
+        print("Successfully Inserted! ")
+    except:
+        print("An unexpected error occurred and we rollback all the changes. ")
+        db.rollback()
+
+    return
+
+
+def modify_grade(db):
+    cursor = db.cursor()
+    dic_sc = {'sno': [], 'cno': [], 'grade': []}
+    print("================== Mode 7: Modify Student's Grade ==================")
+    print("Please input the Student ID and Course ID to search the grade record! ")
+
+    dic_sc['sno'].append(input("Student ID: "))
+    dic_sc['cno'].append(input("Course ID: "))
+
+    sql = "SELECT * FROM SC WHERE Sno = '%s' AND Cno = '%s'" % (dic_sc['sno'][0], dic_sc['cno'][0])
+
+    try:
+        cursor.execute(sql)
+        results = cursor.fetchall()
+        for index, row in enumerate(results):
+            # dic_sc['sno'].append(row[0])
+            # dic_sc['cno'].append(row[1])
+            dic_sc['grade'].append(row[2])
+
+        print("Course founded! Here is the information of this course: ")
+        df = pd.DataFrame(dic_sc)
+        print(tabulate(df, headers='keys', tablefmt='psql'))
+    except:
+        print("Error: unable to fetch data")
+        return
+
+    header_list = ['', 'Sno', 'Cno', 'Grade']
+
+    modify_op = input("Are you sure to modify this score? (y/n): ")
+    if modify_op == 'n':
+        return
+    else:
+        pass
+    new_data = input("Input the new grade: ")
+
+    sql = "UPDATE SC SET Grade = %s WHERE Sno = '%s' AND Cno = '%s'" % (new_data, dic_sc['sno'][0], dic_sc['cno'][0])
+
+    try:
+        print("Successfully Updated! ")
+        cursor.execute(sql)
+        db.commit()
+    except:
+        print("update error! ")
+        db.rollback()
+        return
+
+    return
+
+
+def analyze_grade(db):
+
+
+
 def main():
     ip_addr = input("Input the IP Address (default: localhost): ") or "localhost"
     usr = input("Username (default: yuanye): ") or "yuanye"
@@ -304,6 +394,12 @@ def main():
             modify_course(db)
         elif op == '5':
             delete_course(db)
+        elif op == '6':
+            record_grade(db)
+        elif op == '7':
+            modify_grade(db)
+        elif op == '8':
+            analyze_grade(db)
 
     db.close()
     print("Thanks for using this database! Bye!")

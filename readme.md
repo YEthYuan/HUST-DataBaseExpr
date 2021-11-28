@@ -1,3 +1,3 @@
 安装MySQLdb所需的环境：
 
-> conda install -c bioconda mysqlclient
+> conda install pymysql

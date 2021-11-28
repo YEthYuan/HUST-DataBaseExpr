@@ -2,8 +2,8 @@
 # -*- coding: UTF-8 -*-
 
 import pymysql
-import tabulate
 import pandas as pd
+from tabulate import tabulate
 
 
 def print_menu():
@@ -35,7 +35,7 @@ def insert_student(db):
     dic_student['scholarship'].append("是" if input("Have Scholarship? (y/n)") == 'y' else "否")
 
     df = pd.DataFrame(dic_student)
-    pdtabulate = lambda df: tabulate(df, headers='keys', tablefmt='psql')
+
     print("Re-check the student's information below: ")
     print(tabulate(df, headers='keys', tablefmt='psql'))
 
@@ -64,58 +64,58 @@ def insert_student(db):
 
 def update_student(db):
     cursor = db.cursor()
+    dic_student = {'sno': [], 'sname': [], 'sex': [], 'age': [], 'dept': [], 'scholarship': []}
     print("================== Mode 2: Modify Existing Student Info ==================")
     print("Please input the Student ID to search the student! ")
 
-    sno = input("Student ID: ")
+    dic_student['sno'][0] = input("Student ID: ")
 
-    sql = "SELECT * FROM Student WHERE Sno = '%s'" % sno
+    sql = "SELECT * FROM Student WHERE Sno = '%s'" % dic_student['sno'][0]
 
     try:
         cursor.execute(sql)
         results = cursor.fetchall()
+        for index, row in enumerate(results):
+            dic_student['sno'][index] = row[0]
+            dic_student['sname'][index] = row[1]
+            dic_student['sex'][index] = row[2]
+            dic_student['age'][index] = row[3]
+            dic_student['dept'][index] = row[4]
+            dic_student['scholarship'][index] = row[5]
+
         print("Student founded! Here is the information of this person: ")
-        print("Sno\tSname\tSsex\tSage\tSdept\tScholarship")
-        for row in results:
-            Sno = row[0]
-            Sname = row[1]
-            Ssex = row[2]
-            Sage = row[3]
-            Sdept = row[4]
-            Scholarship = row[5]
+        df = pd.DataFrame(dic_student)
+        print(tabulate(df, headers='keys', tablefmt='psql'))
     except:
-        pass
-
-    sname = input("Name: ")
-    sex = input("Gender: ")
-    age = input("Age: ")
-    dept = input("Student's Department: ")
-    scholarship = "是" if input("Have Scholarship? (y/n)") == 'y' else "否"
-
-    print("Re-check the student's information below: ")
-    print(f'''
-        Student ID: {sno}, \tName: {sname},
-        Gender: {sex}, \tAge: {age},
-        Department: {dept}, \tHave Scholarship: {scholarship}.
-        ''')
-
-    op = input("ARE YOU SURE TO INSERT THE NEW INFORMATION? (y/n)")
-    if op == 'n':
-        print("rollback successfully! ")
+        print("Error: unable to fetch data")
         return
-    else:
-        pass
 
-    sql = "INSERT INTO Student " \
-          "VALUES('%s', '%s', '%s', %s, '%s', '%s')" % (sno, sname, sex, age, dept, scholarship)
+    header_list = ['', 'Sno', 'Sname', 'Ssex', 'Sage', 'Sdept', 'Scholarship']
 
-    try:
-        cursor.execute(sql)
-        db.commit()
-        print("Successfully Inserted! ")
-    except:
-        print("An unexpected error occurred and we rollback all the changes. ")
-        db.rollback()
+    while True:
+        modify_op = input("Select column 1~6 to modify, select 0 to exit: ")
+        if modify_op == '0':
+            break
+        else:
+            pass
+        new_data = input("Input the new data: ")
+
+        sql = "UPDATE Student SET %s = " % header_list[int(modify_op)]
+        if modify_op != 4:
+            sql += "'"
+        sql += new_data
+        if modify_op != 4:
+            sql += "'"
+        sql += "WHERE Sno = '%s'" % dic_student['sno'][0]
+
+        try:
+            print("Successfully Updated! ")
+            cursor.execute(sql)
+            db.commit()
+        except:
+            print("update error! ")
+            db.rollback()
+            return
 
     return
 

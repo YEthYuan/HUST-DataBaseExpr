@@ -39,16 +39,23 @@ def insert_student(db):
 
     op = input("ARE YOU SURE TO INSERT THE NEW INFORMATION? (y/n)")
     if op == 'n':
+        print("rollback successfully! ")
         return
     else:
         pass
 
     cursor = db.cursor()
 
-    sql = f'''
-    INSERT INTO Student
-    
-    '''
+    sql = f"INSERT INTO Student" \
+          f"VALUES({sno},{sname},{sex},{age},{dept},{scholarship})"
+
+    try:
+        cursor.execute(sql)
+        db.commit()
+    except:
+        print("An unexpected error occurred and we rollback all the changes. ")
+        db.rollback()
+
 
 
 def main():
@@ -80,12 +87,13 @@ def main():
     while True:
         print_menu()
         op = input("Choose what you want (0~10): ")
-        if op == 0:
+        if op == '0':
             break
-        elif op == 1:
+        elif op == '1':
             insert_student(db)
 
 
+    db.close()
     print("Thanks for using this database! Bye!")
 
 

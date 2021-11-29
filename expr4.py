@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 
+import os
 import pymysql
 import pandas as pd
 from tabulate import tabulate
@@ -350,7 +351,206 @@ def modify_grade(db):
 
 
 def analyze_grade(db):
+    cursor = db.cursor()
+    dic_sc = {'dept': [], 'avg': [], 'max': [], 'min': [], 'a_rate': [], 'f_num': []}
+    l_dept = []
+    print("================== Mode 8: Print Analytical Info by Dept ==================")
+    # print("Please input the Student ID and Course ID to search the grade record! ")
 
+    # Step 1. acquire all of the dept names
+    sql = "SELECT DISTINCT Sdept FROM Student ORDER BY Sdept"
+    try:
+        cursor.execute(sql)
+        results = cursor.fetchall()
+        for row in results:
+            l_dept.append(row[0])
+    except:
+        print("Error: unable to fetch department data")
+        return
+
+    print("Department List: " + ",".join(str(x) for x in l_dept))
+
+    # Step 2. get the data of each dept
+    for dept in l_dept:
+        dic_sc['dept'].append(dept)
+
+        # fetch the avg, max, min number
+        sql = "SELECT AVG(SC.Grade), MAX(SC.Grade), MIN(SC.Grade) FROM Student, SC WHERE Student.Sdept = '%s' AND " \
+              "Student.Sno = SC.Sno" % dept
+        try:
+            cursor.execute(sql)
+            results = cursor.fetchall()
+            for row in results:
+                dic_sc['avg'].append(row[0])
+                dic_sc['max'].append(row[1])
+                dic_sc['min'].append(row[2])
+        except:
+            print("Error: unable to fetch avg/max/min data")
+            return
+
+        a_number = 0
+        total_number = 0
+
+        # fetch the A number
+        sql = "SELECT COUNT(*) FROM Student, SC WHERE Student.Sdept = '%s' AND Student.Sno = SC.Sno AND SC.Grade >= 90" % dept
+        try:
+            cursor.execute(sql)
+            results = cursor.fetchall()
+            for row in results:
+                a_number = row[0]
+        except:
+            print("Error: unable to fetch avg/max/min data")
+            return
+
+        # fetch all dept student number
+        sql = "SELECT COUNT(*) FROM Student, SC WHERE Student.Sdept = '%s' AND Student.Sno = SC.Sno" % dept
+        try:
+            cursor.execute(sql)
+            results = cursor.fetchall()
+            for row in results:
+                total_number = row[0]
+        except:
+            print("Error: unable to fetch total student number data")
+            return
+
+        if total_number != 0:
+            a_rate = a_number / total_number
+        else:
+            a_rate = 0.0
+        dic_sc['a_rate'].append(a_rate)
+
+        fail_num = 0
+
+        # fetch the failed students number
+        sql = "SELECT COUNT(*) FROM Student, SC WHERE Student.Sdept = '%s' AND Student.Sno = SC.Sno AND SC.Grade < 60" % dept
+        try:
+            cursor.execute(sql)
+            results = cursor.fetchall()
+            for row in results:
+                fail_num = row[0]
+        except:
+            print("Error: unable to fetch avg/max/min data")
+            return
+
+        dic_sc['f_num'].append(fail_num)
+
+    # Step 3. display the information
+    print("Here is the information for your inquire: ")
+    df = pd.DataFrame(dic_sc)
+    print(tabulate(df, headers='keys', tablefmt='psql'))
+    input("Press Enter to continue...")
+    return
+
+
+def rank_student(db):
+    cursor = db.cursor()
+    l_dept = []
+    print("================== Mode 9: Print Department Student Ranking ==================")
+    # print("Please input the Student ID and Course ID to search the grade record! ")
+
+    # Step 1. acquire all of the dept names
+    sql = "SELECT DISTINCT Sdept FROM Student ORDER BY Sdept"
+    try:
+        cursor.execute(sql)
+        results = cursor.fetchall()
+        for row in results:
+            l_dept.append(row[0])
+    except:
+        print("Error: unable to fetch department data")
+        return
+
+    while True:
+        dic_sc = {'sno': [], 'sname': [], 'avg': [], 'c_num': [], 'credits': []}
+        print("Department List: " + ",".join(str(x) for x in l_dept))
+        while True:
+            sel_dept = input("Please select one department to inquire the student's ranking: ")
+            if sel_dept in l_dept:
+                break
+            else:
+                print('Department %s not found! ' % sel_dept)
+
+        # dic_sc = {'sno': [], 'sname': [], 'avg': [], 'c_num': [], 'credits': []}
+        # Step 2. get the data of the chosen dept
+        sql = "SELECT Student.Sno, Student.Sname, AVG(SC.Grade), COUNT(SC.Grade), SUM(Course.Ccredit) FROM Student, SC, " \
+              "Course WHERE Student.Sdept = '%s' AND SC.Sno = Student.Sno AND Course.Cno = SC.Cno GROUP BY Student.Sno " \
+              "ORDER BY AVG(SC.Grade) DESC" % sel_dept
+        try:
+            cursor.execute(sql)
+            results = cursor.fetchall()
+            for row in results:
+                dic_sc['sno'].append(row[0])
+                dic_sc['sname'].append(row[1])
+                dic_sc['avg'].append(row[2])
+                dic_sc['c_num'].append(row[3])
+                dic_sc['credits'].append(row[4])
+        except:
+            print("Error: unable to fetch student's data")
+            return
+
+        # Step 3. display the information
+        print("Here is the ranking of %s department: " % sel_dept)
+        df = pd.DataFrame(dic_sc)
+        print(tabulate(df, headers='keys', tablefmt='psql'))
+        sel_op = input("Do you want to search other department's rank? (y/n)")
+        if sel_op == 'n':
+            break
+        else:
+            pass
+
+    return
+
+
+def show_stu_info(db):
+    cursor = db.cursor()
+    dic_student = {'sno': [], 'sname': [], 'sex': [], 'age': [], 'dept': [], 'scholarship': []}
+    dic_course = {'cno': [], 'cname': [], 'grade': [], 'credits': [], 'cpno': []}
+    print("================== Mode 10: Lookup Student Basic Info ==================")
+    print("Please input the Student ID to search the student! ")
+
+    dic_student['sno'].append(input("Student ID: "))
+
+    sql = "SELECT * FROM Student WHERE Sno = '%s'" % dic_student['sno'][0]
+
+    try:
+        cursor.execute(sql)
+        results = cursor.fetchall()
+        for index, row in enumerate(results):
+            # dic_student['sno'].append(row[0])
+            dic_student['sname'].append(row[1])
+            dic_student['sex'].append(row[2])
+            dic_student['age'].append(row[3])
+            dic_student['dept'].append(row[4])
+            dic_student['scholarship'].append(row[5])
+
+        print("Student founded! Here is the information of this person: ")
+        df = pd.DataFrame(dic_student)
+        print(tabulate(df, headers='keys', tablefmt='psql'))
+    except:
+        print("Error: unable to fetch data")
+        return
+
+    # definition: dic_course = {'cno': [], 'cname': [], 'grade': [], 'credits': [], 'cpno': []}
+    sql = "SELECT SC.Cno, Course.Cname, SC.Grade, Course.Ccredit, Course.Cpno FROM SC, Course WHERE SC.Sno = '%s' AND " \
+          "SC.Cno = Course.Cno" % dic_student['sno'][0] 
+    try:
+        cursor.execute(sql)
+        results = cursor.fetchall()
+        for index, row in enumerate(results):
+            dic_course['cno'].append(row[0])
+            dic_course['cname'].append(row[1])
+            dic_course['grade'].append(row[2])
+            dic_course['credits'].append(row[3])
+            dic_course['cpno'].append(row[4])
+
+        print("Student's Course Info: ")
+        df = pd.DataFrame(dic_course)
+        print(tabulate(df, headers='keys', tablefmt='psql'))
+        input("Press Enter to continue ... ")
+    except:
+        print("Error: unable to fetch course data")
+        return
+
+    return
 
 
 def main():
@@ -400,6 +600,10 @@ def main():
             modify_grade(db)
         elif op == '8':
             analyze_grade(db)
+        elif op == '9':
+            rank_student(db)
+        elif op == '10':
+            show_stu_info(db)
 
     db.close()
     print("Thanks for using this database! Bye!")

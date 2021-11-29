@@ -604,6 +604,8 @@ def main():
             rank_student(db)
         elif op == '10':
             show_stu_info(db)
+        else:
+            print("Wrong Input! ")
 
     db.close()
     print("Thanks for using this database! Bye!")
